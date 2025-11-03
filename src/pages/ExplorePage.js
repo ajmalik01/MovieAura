@@ -112,17 +112,15 @@ const ExplorePage = () => {
         <button
           onClick={scrollToTop}
           className="
-      fixed 
-      bottom-8 right-6          /* desktop position */
-      sm:bottom-8 sm:right-6    /* small & up */
-      bottom-20 right-4          /* mobile: appear higher */
-      bg-red-600 hover:bg-red-700 
-      text-white p-3 rounded-full 
-      shadow-lg transition-transform 
-      transform hover:scale-110 
-      z-50
-    "
-          aria-label="Scroll to top">
+    fixed
+    bottom-20 right-4
+    sm:bottom-8 sm:right-6
+    bg-red-600 hover:bg-red-700
+    text-white p-3 rounded-full
+    shadow-lg transition-transform
+    transform hover:scale-110
+    z-50
+  ">
           <FaArrowUp className="text-xl" />
         </button>
       )}
@@ -130,4 +128,4 @@ const ExplorePage = () => {
   );
 };
 
-export default ExplorePage;
+export default React.memo(ExplorePage);

@@ -54,4 +54,4 @@ const HorizontalScrollCard = ({ data = [], heading, trending, media_type }) => {
   );
 };
 
-export default HorizontalScrollCard;
+export default React.memo(HorizontalScrollCard);

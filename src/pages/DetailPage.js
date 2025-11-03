@@ -1,20 +1,37 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import moment from "moment";
 import { motion } from "framer-motion";
-import { FaArrowCircleRight, FaArrowCircleLeft } from "react-icons/fa";
+import {
+  FaArrowCircleRight,
+  FaArrowCircleLeft,
+  FaPlay,
+  FaHeart,
+  FaRegHeart,
+  FaBookmark,
+  FaRegBookmark,
+} from "react-icons/fa";
 import Divider from "../components/Divider";
 import useFetch from "../hooks/useFetch";
 import useFetchDetails from "../hooks/useFetchDetails";
 import HorizontalScrollCard from "../components/HorizontalScrollCard";
-
-import { FaPlay } from "react-icons/fa";
 import VideoPlay from "../components/VideoPlay";
 
+// ✅ Fixed import
+import {
+  addFavorite,
+  removeFavorite,
+  addWatchlist,
+  removeWatchlist,
+} from "../store/favoritesSlice";
+
 const DetailPage = () => {
+  const dispatch = useDispatch();
   const params = useParams();
   const imageURL = useSelector((state) => state.cinefyData.imageURL);
+  const { favorites, watchlist } = useSelector((state) => state.userLists);
+  const userEmail = useSelector((state) => state.cinefyData.user?.email);
 
   const { data } = useFetchDetails(`/${params?.explore}/${params?.id}`);
   const { data: castData } = useFetchDetails(
@@ -26,24 +43,25 @@ const DetailPage = () => {
   const { data: recommendationData } = useFetch(
     `/${params?.explore}/${params?.id}/recommendations`
   );
+
   const [playVideo, setPlayVideo] = useState(false);
   const [playVideoId, SetPlayVideoId] = useState("");
+  const [showMore, setShowMore] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [toastMessage, setToastMessage] = useState(""); // ✅ new
+  const castScrollRef = useRef(null);
+
+  const isMobile = window.innerWidth <= 768;
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [params.id]);
 
   const handlePlayVideo = (data) => {
     SetPlayVideoId(data);
     setPlayVideo(true);
   };
 
-  const [showMore, setShowMore] = useState(false);
-  const [hovered, setHovered] = useState(false);
-  const castScrollRef = useRef(null);
-
-  // Scroll to top when movie changes
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [params.id]);
-
-  // Loading shimmer animation
   if (!data) {
     return (
       <div className="flex items-center justify-center h-screen bg-neutral-900">
@@ -67,10 +85,6 @@ const DetailPage = () => {
     ? (Number(data.runtime) / 60).toFixed(1).split(".")
     : [0, 0];
 
-  // const writer = castData?.crew
-  //   ?.filter((el) => el?.job?.toLowerCase().includes("writer"))
-  //   ?.map((el) => el?.name)
-  //   .join(", ");
   const writer = castData?.crew
     ?.filter(
       (el) =>
@@ -82,9 +96,36 @@ const DetailPage = () => {
     ?.map((el) => el.name)
     .join(", ");
 
-  const isMobile = window.innerWidth <= 768;
+  const isFavorite = favorites.some((item) => item.id === data.id);
+  const isInWatchlist = watchlist.some((item) => item.id === data.id);
 
-  // Cast scroll functions
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(""), 3000);
+  };
+
+  const toggleFavorite = () => {
+    if (!userEmail) return alert("Please log in to manage favorites.");
+    if (isFavorite) {
+      dispatch(removeFavorite({ userEmail, id: data.id }));
+      showToast("Removed from Favorites ❤️");
+    } else {
+      dispatch(addFavorite({ userEmail, item: data }));
+      showToast("Added to Favorites ❤️");
+    }
+  };
+
+  const toggleWatchlist = () => {
+    if (!userEmail) return alert("Please log in to manage watchlist.");
+    if (isInWatchlist) {
+      dispatch(removeWatchlist({ userEmail, id: data.id }));
+      showToast("Removed from Watchlist 📋");
+    } else {
+      dispatch(addWatchlist({ userEmail, item: data }));
+      showToast("Added to Watchlist 📋");
+    }
+  };
+
   const scrollLeft = () => {
     castScrollRef.current.scrollBy({ left: -300, behavior: "smooth" });
   };
@@ -98,7 +139,18 @@ const DetailPage = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="text-white bg-neutral-950">
+      className="text-white bg-neutral-950 relative">
+      {/* ✅ Toast Notification */}
+      {toastMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className="fixed top-10 left-1/2 -translate-x-1/2 bg-neutral-800 text-white px-6 py-3 rounded-full shadow-lg z-50 text-sm sm:text-base">
+          {toastMessage}
+        </motion.div>
+      )}
+
       {/* Banner */}
       <div className="relative w-full h-[450px] overflow-hidden">
         <motion.img
@@ -114,77 +166,54 @@ const DetailPage = () => {
 
       {/* Info Section */}
       <div className="container mx-auto px-4 py-10 flex flex-col lg:flex-row gap-10">
-        {/* Poster */}
         <motion.div
-          className="
-    w-fit mx-auto 
-    -mt-20 lg:-mt-40 
-    relative flex flex-col items-center
-  "
+          className="w-fit mx-auto -mt-20 lg:-mt-40 relative flex flex-col items-center"
           initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}>
-          {/* Poster */}
           <img
             src={imageURL + data?.poster_path}
             alt={data?.title}
-            className="
-      w-56 h-80 sm:w-60 sm:h-84 lg:w-72 lg:h-[420px]
-      object-cover rounded-2xl shadow-2xl
-    "
+            className="w-56 h-80 sm:w-60 sm:h-84 lg:w-72 lg:h-[420px] object-cover rounded-2xl shadow-2xl"
             loading="lazy"
             decoding="async"
           />
 
-          {/* Animated Play Now Button */}
+          {/* Play Now */}
           <motion.button
             onClick={() => handlePlayVideo(data)}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            className="
-      relative mt-6 
-      bg-gradient-to-r from-orange-500 to-red-700 
-      text-white font-semibold uppercase
-      text-sm sm:text-base lg:text-lg tracking-wide
-      px-6 sm:px-8 lg:px-10 py-2.5 sm:py-3 lg:py-3.5
-      rounded-full shadow-[0_0_20px_rgba(255,100,50,0.4)]
-      overflow-hidden isolate
-      flex items-center gap-2 justify-center
-      transition-all duration-500 ease-out
-      hover:shadow-[0_0_35px_rgba(255,100,80,0.7)]
-      focus:outline-none focus:ring-2 focus:ring-red-500/60
-    ">
-            {/* Icon + Text */}
+            className="relative mt-6 bg-gradient-to-r from-orange-500 to-red-700 text-white font-semibold uppercase text-sm sm:text-base lg:text-lg tracking-wide px-6 py-3 rounded-full shadow-[0_0_20px_rgba(255,100,50,0.4)] overflow-hidden flex items-center gap-2 justify-center transition-all duration-500 ease-out hover:shadow-[0_0_35px_rgba(255,100,80,0.7)]">
             <FaPlay className="text-lg sm:text-xl" />
-            <span className="relative z-10">Play Now</span>
-
-            {/* Animated gradient shine */}
-            <span
-              className="
-        absolute top-0 left-[-150%] w-[200%] h-full
-        bg-gradient-to-r from-transparent via-white/40 to-transparent
-        animate-[shine_2.5s_linear_infinite]
-      "></span>
-
-            {/* Soft glow background pulse */}
-            <span
-              className="
-        absolute inset-0 rounded-full 
-        bg-gradient-to-r from-orange-400/20 via-red-500/30 to-red-600/20
-        blur-xl animate-pulse opacity-60
-      "></span>
+            <span>Play Now</span>
           </motion.button>
-        </motion.div>
 
-        <style>
-          {`
-@keyframes shine {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-`}
-        </style>
+          {/* Favorites & Watchlist Buttons */}
+          <div className="flex gap-4 mt-5">
+            <button
+              onClick={toggleFavorite}
+              className="flex items-center gap-2 bg-neutral-800 hover:bg-red-600 text-white px-4 py-2 rounded-full transition-all">
+              {isFavorite ? (
+                <FaHeart className="text-red-500" />
+              ) : (
+                <FaRegHeart />
+              )}
+              {isFavorite ? "Favorited" : "Add to Favorites"}
+            </button>
+
+            <button
+              onClick={toggleWatchlist}
+              className="flex items-center gap-2 bg-neutral-800 hover:bg-yellow-600 text-white px-4 py-2 rounded-full transition-all">
+              {isInWatchlist ? (
+                <FaBookmark className="text-yellow-400" />
+              ) : (
+                <FaRegBookmark />
+              )}
+              {isInWatchlist ? "In Watchlist" : "Add to Watchlist"}
+            </button>
+          </div>
+        </motion.div>
 
         {/* Details */}
         <motion.div
@@ -207,7 +236,6 @@ const DetailPage = () => {
 
           <Divider />
 
-          {/* Overview (Read more on mobile) */}
           <div className="text-neutral-300 mb-4 leading-relaxed">
             <h3 className="text-xl font-semibold text-white mb-2">Overview</h3>
             {isMobile ? (
@@ -264,7 +292,6 @@ const DetailPage = () => {
         className="relative container mx-auto px-4 mb-10">
         <h2 className="font-bold text-2xl mb-4">Cast</h2>
 
-        {/* Left Button (visible on hover) */}
         {hovered && (
           <button
             onClick={scrollLeft}
@@ -273,7 +300,6 @@ const DetailPage = () => {
           </button>
         )}
 
-        {/* Cast Scroll */}
         <div
           ref={castScrollRef}
           className="flex gap-4 overflow-x-auto scroll-smooth no-scrollbar">
@@ -295,7 +321,6 @@ const DetailPage = () => {
             ))}
         </div>
 
-        {/* Right Button (visible on hover) */}
         {hovered && (
           <button
             onClick={scrollRight}
@@ -318,6 +343,8 @@ const DetailPage = () => {
           media_type={params?.explore}
         />
       </div>
+
+      {/* Video Player */}
       {playVideo && (
         <VideoPlay
           data={playVideoId}

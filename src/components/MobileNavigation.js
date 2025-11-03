@@ -32,4 +32,4 @@ const MobileNavigation = () => {
   );
 };
 
-export default MobileNavigation;
+export default React.memo(MobileNavigation);

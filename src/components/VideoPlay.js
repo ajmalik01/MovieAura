@@ -62,4 +62,4 @@ const VideoPlay = ({ data, onClose, media_type }) => {
   );
 };
 
-export default VideoPlay;
+export default React.memo(VideoPlay);
